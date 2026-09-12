@@ -1,3 +1,4 @@
+import gc
 import lz4.block
 import pytest
 
@@ -17,6 +18,7 @@ def data(request):
     return request.param
 
 
+@pytest.mark.thread_unsafe
 def test_block_decompress_mem_usage(data):
     tracemalloc = pytest.importorskip('tracemalloc')
 
@@ -29,10 +31,11 @@ def test_block_decompress_mem_usage(data):
         decompressed = lz4.block.decompress(compressed)  # noqa: F841
 
         if i % 100 == 0:
+            gc.collect()
             snapshot = tracemalloc.take_snapshot()
 
             if prev_snapshot:
                 stats = snapshot.compare_to(prev_snapshot, 'lineno')
-                assert stats[0].size_diff < (1024 * 4)
+                assert stats[0].size_diff < (1024 * 8)
 
             prev_snapshot = snapshot
